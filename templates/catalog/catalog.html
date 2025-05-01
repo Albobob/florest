@@ -14,7 +14,7 @@
         {% for category in categories %}
             <a href="{% url 'catalog' %}?category={{ category.slug }}"
                class="menu-btn {% if current_category == category.slug %}active{% endif %}">
-                <span class="count">({{ category.products.count }})</span>
+                <span class="count">({{ category.get_total_products }})</span>
                 {{ category.name }}
             </a>
         {% endfor %}

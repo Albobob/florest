@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Notification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Telegram Notification</h1>
+    <p>Click the button below to send a test notification to all active Telegram subscribers.</p>
+    
+    <button class="test-button" onclick="sendTestNotification()">Send Test Notification</button>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function sendTestNotification() {
+            const csrftoken = getCookie('csrftoken');
+            
+            fetch('/cart/test-notification/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                if (data.status === 'success') {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = '✅ Тестовое уведомление успешно отправлено!';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Ошибка: ${data.message}`;
+                }
+            })
+            .catch(error => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Ошибка: ${error.message}`;
+            });
+        }
+    </script>
+</body>
+</html> 

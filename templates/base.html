@@ -18,16 +18,20 @@
         </div>
         
         <form class="search-form" action="{% url 'catalog' %}" method="get">
-            <input type="text" name="search" placeholder="Поиск растений..." value="{{ request.GET.search }}">
-            <button type="submit" class="search-btn">
+            <input type="text" 
+                   name="search" 
+                   placeholder="Поиск растений..." 
+                   value="{{ search_query }}"
+                   autocomplete="off">
+            <button type="submit" class="search-btn" aria-label="Поиск">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
-                    <path d="M21 21l-4.35-4.35"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
             </button>
         </form>
 
-        <a href="{% url 'cart:cart' %}" class="cart-icon">
+        <a href="{% url 'cart:cart' %}" class="cart-icon" aria-label="Корзина">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM20 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>

@@ -63,6 +63,11 @@ body {
     width: 40%;
     max-width: 400px;
     align-items: center;
+    transition: all 0.3s ease;
+}
+
+.search-form:focus-within {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .search-form input {
@@ -72,10 +77,30 @@ body {
     color: white;
     width: 100%;
     padding: 0.5rem;
+    font-size: 14px;
 }
 
 .search-form input::placeholder {
     color: rgba(255, 255, 255, 0.7);
+}
+
+.search-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn svg {
+    stroke: rgba(255, 255, 255, 0.7);
+    transition: stroke 0.3s ease;
+}
+
+.search-btn:hover svg {
+    stroke: white;
 }
 
 .cart-icon {
@@ -83,29 +108,32 @@ body {
     background: rgba(255, 255, 255, 0.1);
     padding: 0.75rem;
     border-radius: 50%;
-}
-
-.cart-icon a {
-    color: white;
-    text-decoration: none;
     display: flex;
     align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.cart-icon:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.cart-icon svg {
+    stroke: white;
 }
 
 .cart-count {
     position: absolute;
     top: -5px;
     right: -5px;
-    background: white;
+    background: var(--accent-color);
     color: var(--primary-color);
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     font-size: 12px;
     font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
 }
 
 .menu {

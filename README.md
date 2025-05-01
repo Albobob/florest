@@ -71,3 +71,17 @@ Visit http://127.0.0.1:8000/ to view the site.
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request 
+
+# Django settings
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+
+# Email settings
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=your-email@gmail.com
+CONTACT_EMAIL=your-email@gmail.com
+
+# Telegram settings
+TELEGRAM_BOT_TOKEN=your-bot-token-from-botfather
+TELEGRAM_CHAT_ID=your-chat-id 

@@ -24,6 +24,11 @@ class Category(MPTTModel):
     def get_absolute_url(self):
         return reverse('category_detail', kwargs={'slug': self.slug})
 
+    def get_total_products(self):
+        """Возвращает общее количество товаров в категории и всех её подкатегориях"""
+        descendants = self.get_descendants(include_self=True)
+        return Product.objects.filter(category__in=descendants).count()
+
 class Product(ModelMeta, models.Model):
     STOCK_STATUS_CHOICES = [
         ('in_stock', 'В наличии'),
