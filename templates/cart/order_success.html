@@ -1,0 +1,23 @@
+<!-- templates/cart/order_success.html -->
+{% extends 'base.html' %}
+{% block title %}Заказ отправлен{% endblock %}
+{% block content %}
+<div class="mobile-catalog">
+    <div class="top-bar">
+        <span class="logo">Plant Shop</span>
+        <div class="top-bar-right">
+            <a href="{% url 'cart' %}" class="icon cart-icon">🛒</a>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Заказ успешно отправлен!</h1>
+        <p>Менеджер свяжется с вами в ближайшее время.</p>
+        <a href="{% url 'catalog' %}" class="btn">Вернуться в каталог</a>
+    </div>
+    <div class="bottom-nav">
+        <a href="{% url 'catalog' %}" class="nav-item active">Все</a>
+        <a href="{% url 'catalog' %}?in_stock=true" class="nav-item">В наличии</a>
+        <a href="{% url 'contacts' %}" class="nav-item">Контакты</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load core_tags %}
+
+{% block title %}Каталог{% endblock %}
+
+{% block content %}
+<div class="app-container">
+    <div class="menu">
+        <a href="{% url 'catalog' %}" class="menu-btn {% if not current_category %}active{% endif %}">
+            <span class="count">({{ products.count }})</span>
+            Все
+        </a>
+        {% for category in categories %}
+            <a href="{% url 'catalog' %}?category={{ category.slug }}"
+               class="menu-btn {% if current_category == category.slug %}active{% endif %}">
+                <span class="count">({{ category.products.count }})</span>
+                {{ category.name }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="product-grid">
+        {% for product in products %}
+            <div class="product-card">
+                <a href="{{ product.get_absolute_url }}" class="product-link">
+                    <div class="product-image-container">
+                        <img src="{% if product.images.first %}{{ product.images.first.image_thumbnail.url }}{% else %}{% get_placeholder_image product.category.id %}{% endif %}"
+                             alt="{{ product.name }}" class="product-image">
+                    </div>
+                    <div class="product-info">
+                        <div class="price-status-container">
+                            <p class="price">{{ product.price }} ₽</p>
+                            {% if product.stock_status == 'in_stock' %}
+                                <span class="availability-badge in-stock">В наличии</span>
+                            {% elif product.stock_status == 'on_order' %}
+                                <span class="availability-badge on-order">Под заказ</span>
+                            {% else %}
+                                <span class="availability-badge out-of-stock">Нет в наличии</span>
+                            {% endif %}
+                        </div>
+                        <h3>{{ product.name }}</h3>
+                        <div class="plant-conditions">
+                            {% if product.water_need %}
+                            <div class="condition-icon" title="Потребность в воде">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L12 22M2 12L22 12" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            {% endif %}
+                            {% if product.light_need %}
+                            <div class="condition-icon" title="Потребность в свете">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="5"/>
+                                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                                </svg>
+                            </div>
+                            {% endif %}
+                            {% if product.temperature_need %}
+                            <div class="condition-icon" title="Оптимальная температура">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                <button type="button" class="add-btn" data-product-id="{{ product.id }}">+</button>
+            </div>
+        {% empty %}
+            <p class="no-products">Товары не найдены.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="toast" class="toast" style="display: none;">
+    <div class="toast-content"></div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const showToast = (message, type = 'success') => {
+        const toast = document.getElementById('toast');
+        toast.className = `toast ${type}`;
+        toast.querySelector('.toast-content').textContent = message;
+        toast.style.display = 'block';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    };
+
+    document.querySelectorAll('.add-btn').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const productId = button.dataset.productId;
+            
+            try {
+                const response = await fetch(`/cart/add/${productId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showToast(data.message);
+                    // Update cart count in header
+                    const cartCount = document.querySelector('.cart-count');
+                    if (cartCount && data.cart_count) {
+                        cartCount.textContent = data.cart_count;
+                    }
+                } else {
+                    showToast(data.message || 'Ошибка добавления в корзину', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showToast('Ошибка добавления в корзину', 'error');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

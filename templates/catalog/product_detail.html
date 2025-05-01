@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load core_tags %}
+
+{% block title %}{{ product.name }} - Plant Shop{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/product-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="product-detail">
+    <div class="product-gallery">
+        <div class="main-image">
+            {% if product.images.exists %}
+                <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}" id="main-image">
+            {% else %}
+                <img src="{% get_placeholder_image product.category.id %}" alt="{{ product.name }}" id="main-image">
+            {% endif %}
+        </div>
+        {% if product.images.exists %}
+        <div class="thumbnail-list">
+            {% for image in product.images.all %}
+                <div class="thumbnail {% if forloop.first %}active{% endif %}" data-image-url="{{ image.image.url }}">
+                    <img src="{{ image.image_thumbnail.url }}" alt="{{ product.name }} - Image {{ forloop.counter }}">
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="product-info">
+        <h1>{{ product.name }}</h1>
+        <div class="price-section">
+            <p class="price">{{ product.price }} ₽</p>
+            {% if product.stock_status == 'in_stock' %}
+                <span class="stock in-stock">В наличии</span>
+            {% elif product.stock_status == 'on_order' %}
+                <span class="stock on-order">Под заказ</span>
+            {% else %}
+                <span class="stock out-of-stock">Нет в наличии</span>
+            {% endif %}
+        </div>
+
+        <div class="short-description">
+            {{ product.short_description }}
+        </div>
+
+        {% if product.stock_status != 'out_of_stock' %}
+            <div class="add-to-cart-section">
+                <form method="post" action="{% url 'cart:add_to_cart' product.id %}" class="add-to-cart-form">
+                    {% csrf_token %}
+                    <div class="quantity-controls">
+                        <button type="button" class="quantity-btn minus">-</button>
+                        <input type="number" name="quantity" id="quantity" value="1" min="1">
+                        <button type="button" class="quantity-btn plus">+</button>
+                    </div>
+                    <button type="submit" class="add-to-cart" data-product-id="{{ product.id }}">
+                        {% if product.stock_status == 'in_stock' %}
+                            Добавить в корзину
+                        {% else %}
+                            Заказать
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+
+        <div class="product-details">
+            <h2>Характеристики растения</h2>
+            <div class="details-grid">
+                {% if product.height %}
+                <div class="detail-item">
+                    <span class="label">Высота:</span>
+                    <span class="value">{{ product.height }}</span>
+                </div>
+                {% endif %}
+                {% if product.flowering %}
+                <div class="detail-item">
+                    <span class="label">Цветение:</span>
+                    <span class="value">{{ product.flowering }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <h3>Условия посадки</h3>
+            <div class="planting-conditions">
+                {{ product.planting_conditions|linebreaks }}
+            </div>
+
+            <h3>Описание</h3>
+            <div class="full-description">
+                {{ product.description|linebreaks }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast" style="display: none;">
+    <div class="toast-content"></div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Image gallery
+    const mainImage = document.getElementById('main-image');
+    const thumbnails = document.querySelectorAll('.thumbnail');
+
+    thumbnails.forEach(thumbnail => {
+        thumbnail.addEventListener('click', () => {
+            // Update main image
+            mainImage.src = thumbnail.dataset.imageUrl;
+            
+            // Update active state
+            thumbnails.forEach(t => t.classList.remove('active'));
+            thumbnail.classList.add('active');
+        });
+    });
+
+    // Quantity controls
+    const quantityInput = document.getElementById('quantity');
+    if (quantityInput) {
+        document.querySelector('.minus').addEventListener('click', () => {
+            const newValue = Math.max(1, parseInt(quantityInput.value) - 1);
+            quantityInput.value = newValue;
+        });
+
+        document.querySelector('.plus').addEventListener('click', () => {
+            quantityInput.value = parseInt(quantityInput.value) + 1;
+        });
+
+        quantityInput.addEventListener('change', () => {
+            const newValue = Math.max(1, parseInt(quantityInput.value));
+            quantityInput.value = newValue;
+        });
+    }
+
+    // Toast notification
+    const showToast = (message, type = 'success') => {
+        const toast = document.getElementById('toast');
+        toast.className = `toast ${type}`;
+        toast.querySelector('.toast-content').textContent = message;
+        toast.style.display = 'block';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    };
+
+    // Add to cart form submission
+    const addToCartForm = document.querySelector('.add-to-cart-form');
+    if (addToCartForm) {
+        addToCartForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch(addToCartForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: new FormData(addToCartForm)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showToast(data.message);
+                    // Update cart count in header if it exists
+                    const cartCount = document.querySelector('.cart-count');
+                    if (cartCount && data.cart_count) {
+                        cartCount.textContent = data.cart_count;
+                    }
+                } else {
+                    showToast(data.message || 'Ошибка добавления в корзину', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showToast('Ошибка добавления в корзину', 'error');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

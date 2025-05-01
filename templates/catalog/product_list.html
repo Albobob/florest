@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Plant Catalog - Plant Shop{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/catalog.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="catalog-container">
+    <aside class="filters">
+        <h2>Categories</h2>
+        <ul class="category-list">
+            {% for category in categories %}
+                <li {% if category.is_active %}class="active"{% endif %}>
+                    <a href="{% url 'catalog' %}?category={{ category.slug }}">
+                        {{ category.name }}
+                        <span class="count">({{ category.products.count }})</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <main class="products">
+        <div class="products-header">
+            <h1>Our Plants</h1>
+            <div class="sort-controls">
+                <select name="sort" id="sort">
+                    <option value="name">Name A-Z</option>
+                    <option value="-name">Name Z-A</option>
+                    <option value="price">Price Low to High</option>
+                    <option value="-price">Price High to Low</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="product-grid">
+            {% for product in products %}
+            <article class="product-card">
+                <div class="product-image">
+                    {% with product.images.first as image %}
+                        {% if image %}
+                            <img src="{{ image.image_thumbnail.url }}" alt="{{ product.name }}" loading="lazy">
+                        {% endif %}
+                    {% endwith %}
+                    {% if product.is_new %}
+                        <span class="badge new">New</span>
+                    {% endif %}
+                </div>
+                <div class="product-info">
+                    <h2><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h2>
+                    <p class="price">${{ product.price }}</p>
+                    <p class="description">{{ product.short_description|truncatewords:15 }}</p>
+                    <div class="product-actions">
+                        <button class="add-to-cart" data-product-id="{{ product.id }}">
+                            Add to Cart
+                        </button>
+                        <a href="{{ product.get_absolute_url }}" class="details-link">View Details</a>
+                    </div>
+                </div>
+            </article>
+            {% empty %}
+            <div class="no-products">
+                <p>No plants found matching your criteria.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="page-link">&laquo; Previous</a>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="page-link active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}" class="page-link">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="page-link">Next &raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<div id="toast" class="toast" style="display: none;">
+    <div class="toast-content"></div>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const showToast = (message, type = 'success') => {
+        const toast = document.getElementById('toast');
+        toast.className = `toast ${type}`;
+        toast.querySelector('.toast-content').textContent = message;
+        toast.style.display = 'block';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    };
+
+    document.querySelectorAll('.add-to-cart').forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const productId = e.target.dataset.productId;
+            
+            try {
+                const response = await fetch('{% url "cart:add_to_cart" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        quantity: 1
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showToast(data.message);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showToast('Error adding item to cart', 'error');
+            }
+        });
+    });
+
+    // Sort functionality
+    document.getElementById('sort').addEventListener('change', (e) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('sort', e.target.value);
+        window.location.search = urlParams.toString();
+    });
+});
+</script>
+{% endblock %} 

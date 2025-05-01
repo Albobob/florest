@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load core_tags %}
+
+{% block title %}Корзина - Plant Shop{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/cart.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="cart-container">
+    <h1>Корзина</h1>
+    
+    {% if cart_items %}
+        <div class="cart-items">
+            {% for item in cart_items %}
+            <div class="cart-item" data-item-id="{{ item.product.id }}" data-price="{{ item.product.price }}" data-initial-quantity="{{ item.quantity }}">
+                <div class="item-image">
+                    {% with item.product.images.first as image %}
+                        {% if image %}
+                            <img src="{{ image.image_thumbnail.url }}" alt="{{ item.product.name }}">
+                        {% else %}
+                            <img src="{% get_placeholder_image item.product.category.id %}" alt="{{ item.product.name }}">
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                <div class="item-details">
+                    <h3>{{ item.product.name }}</h3>
+                    <p class="price">{{ item.product.price }} ₽</p>
+                    <div class="quantity-controls">
+                        <button type="button" class="quantity-btn minus">-</button>
+                        <input type="number" class="quantity-input" value="{{ item.quantity }}" min="1">
+                        <button type="button" class="quantity-btn plus">+</button>
+                    </div>
+                    <p class="item-total">Итого: <span>{{ item.total_price }}</span> ₽</p>
+                    <button class="remove-item">Удалить</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="cart-summary">
+            <h2>Информация о заказе</h2>
+           
+            <div class="summary-row">
+                <span>Подытог:</span>
+                <span class="cart-subtotal">{{ total_price }} ₽</span>
+            </div>
+            <div class="summary-row">
+                <span>Доставка:</span>
+                <span>Уточняется у менеджера</span>
+            </div>
+            <div class="summary-row total">
+                <span>Итого:</span>
+                <span class="cart-total">{{ total_price }} ₽</span>
+            </div>
+            
+            <form id="checkout-form" class="checkout-form">
+                {% csrf_token %}
+                <h3>Информация для доставки</h3>
+                <div class="form-group">
+                    <input type="text" name="name" required placeholder="ФИО">
+                </div>
+                <div class="form-group">
+                    <input type="email" name="email" required placeholder="Email">
+                </div>
+                <div class="form-group">
+                    <input type="tel" name="phone" required placeholder="Номер телефона">
+                </div>
+                <div class="form-group">
+                    <textarea name="address" required placeholder="Адрес доставки"></textarea>
+                </div>
+                <button type="submit" class="place-order-btn">Оформить заказ</button>
+            </form>
+        </div>
+    {% else %}
+        <div class="empty-cart">
+            <h2>Ваша корзина пуста</h2>
+            <p>Похоже, вы еще не добавили растения в корзину.</p>
+            <a href="{% url 'catalog' %}" class="continue-shopping">Продолжить покупки</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formatPrice = (price) => {
+        return parseFloat(price).toFixed(2);
+    };
+
+    const calculateCartTotal = () => {
+        let total = 0;
+        document.querySelectorAll('.cart-item').forEach(item => {
+            const price = parseFloat(item.dataset.price);
+            const quantity = parseInt(item.querySelector('.quantity-input').value);
+            total += price * quantity;
+        });
+        return total;
+    };
+
+    const updateCartDisplay = (itemElement, quantity, itemTotal, cartTotal) => {
+        // Update item total
+        itemElement.querySelector('.item-total span').textContent = formatPrice(itemTotal);
+        
+        // Update cart totals
+        const total = cartTotal || calculateCartTotal();
+        document.querySelector('.cart-subtotal').textContent = formatPrice(total) + ' ₽';
+        document.querySelector('.cart-total').textContent = formatPrice(total) + ' ₽';
+        
+        // Update quantity input
+        itemElement.querySelector('.quantity-input').value = quantity;
+
+        // Update cart count in header if it exists
+        const cartCount = document.querySelector('.cart-count');
+        if (cartCount) {
+            let totalItems = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                totalItems += parseInt(item.querySelector('.quantity-input').value);
+            });
+            cartCount.textContent = totalItems;
+        }
+    };
+
+    const updateQuantity = async (itemElement, newQuantity) => {
+        const itemId = itemElement.dataset.itemId;
+        const price = parseFloat(itemElement.dataset.price);
+        const itemTotal = price * newQuantity;
+        
+        // Update display immediately for better UX
+        updateCartDisplay(itemElement, newQuantity, itemTotal);
+        
+        try {
+            const response = await fetch('{% url "cart:update_cart" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    quantity: newQuantity
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                // Update with server-confirmed values
+                updateCartDisplay(itemElement, newQuantity, data.item_total, data.total);
+                
+                // If quantity is 0, remove the item
+                if (newQuantity === 0) {
+                    itemElement.remove();
+                    // If no items left, reload to show empty cart
+                    if (document.querySelectorAll('.cart-item').length === 0) {
+                        location.reload();
+                    }
+                }
+            } else {
+                // Revert to initial quantity if there's an error
+                const initialQuantity = parseInt(itemElement.dataset.initialQuantity);
+                updateCartDisplay(itemElement, initialQuantity, price * initialQuantity);
+                alert(data.message || 'Error updating cart');
+            }
+        } catch (error) {
+            // Revert to initial quantity on error
+            const initialQuantity = parseInt(itemElement.dataset.initialQuantity);
+            updateCartDisplay(itemElement, initialQuantity, price * initialQuantity);
+            console.error('Error updating cart:', error);
+            alert('Error updating cart');
+        }
+    };
+
+    // Initialize cart totals on page load
+    const total = calculateCartTotal();
+    document.querySelector('.cart-subtotal').textContent = formatPrice(total) + ' ₽';
+    document.querySelector('.cart-total').textContent = formatPrice(total) + ' ₽';
+
+    // Quantity controls
+    document.querySelectorAll('.cart-item').forEach(item => {
+        const input = item.querySelector('.quantity-input');
+        
+        item.querySelector('.minus').addEventListener('click', () => {
+            const newValue = Math.max(1, parseInt(input.value) - 1);
+            updateQuantity(item, newValue);
+        });
+
+        item.querySelector('.plus').addEventListener('click', () => {
+            const newValue = parseInt(input.value) + 1;
+            updateQuantity(item, newValue);
+        });
+
+        input.addEventListener('change', () => {
+            const newValue = Math.max(1, parseInt(input.value));
+            input.value = newValue; // Update input value immediately
+            updateQuantity(item, newValue);
+        });
+
+        // Remove item button
+        item.querySelector('.remove-item').addEventListener('click', () => {
+            updateQuantity(item, 0);
+        });
+    });
+
+    // Checkout form
+    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        
+        try {
+            const response = await fetch('{% url "cart:place_order" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    name: form.name.value,
+                    email: form.email.value,
+                    phone: form.phone.value,
+                    address: form.address.value
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                window.location.href = '{% url "catalog" %}';
+                alert('Заказ успешно оформлен!');
+            } else {
+                alert(data.message || 'Ошибка оформления заказа');
+            }
+        } catch (error) {
+            console.error('Error placing order:', error);
+            alert('Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте еще раз.');
+        }
+    });
+});
+</script>
+{% endblock %}
