@@ -11,14 +11,52 @@
             <span class="count">({{ products.count }})</span>
             Все
         </a>
-        {% for category in categories %}
-            <a href="{% url 'catalog' %}?category={{ category.slug }}"
-               class="menu-btn {% if current_category == category.slug %}active{% endif %}">
-                <span class="count">({{ category.get_total_products }})</span>
-                {{ category.name }}
+
+        {% if current_category and current_category.parent %}
+            {# Показываем кнопку возврата к родительской категории #}
+            <a href="{% url 'catalog' %}?category={{ current_category.parent.slug }}" 
+               class="menu-btn parent-category">
+                <span class="count">({{ current_category.parent.get_total_products }})</span>
+                {{ current_category.parent.name }}
             </a>
-        {% endfor %}
+        {% endif %}
+
+        {% if current_category %}
+            {# Показываем текущую категорию #}
+            <a href="{% url 'catalog' %}?category={{ current_category.slug }}" 
+               class="menu-btn active current-category">
+                <span class="count">({{ current_category.get_total_products }})</span>
+                {{ current_category.name }}
+            </a>
+
+            {# Показываем подкатегории текущей категории #}
+            {% for subcategory in subcategories %}
+                <a href="{% url 'catalog' %}?category={{ subcategory.slug }}" 
+                   class="menu-btn subcategory">
+                    <span class="count">({{ subcategory.get_total_products }})</span>
+                    {{ subcategory.name }}
+                </a>
+            {% endfor %}
+        {% else %}
+            {# Показываем только корневые категории, если не выбрана конкретная категория #}
+            {% for category in root_categories %}
+                <a href="{% url 'catalog' %}?category={{ category.slug }}" 
+                   class="menu-btn root-category">
+                    <span class="count">({{ category.get_total_products }})</span>
+                    {{ category.name }}
+                </a>
+            {% endfor %}
+        {% endif %}
     </div>
+
+    {% if search_query %}
+        <div class="search-results">
+            <h2>Результаты поиска: {{ search_query }}</h2>
+            {% if not products %}
+                <p class="no-results">По вашему запросу ничего не найдено</p>
+            {% endif %}
+        </div>
+    {% endif %}
 
     <div class="product-grid">
         {% for product in products %}
