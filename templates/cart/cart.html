@@ -129,9 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const price = parseFloat(itemElement.dataset.price);
         const itemTotal = price * newQuantity;
         
-        // Update display immediately for better UX
-        updateCartDisplay(itemElement, newQuantity, itemTotal);
-        
         try {
             const response = await fetch('{% url "cart:update_cart" %}', {
                 method: 'POST',
@@ -147,29 +144,48 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             if (data.status === 'success') {
-                // Update with server-confirmed values
-                updateCartDisplay(itemElement, newQuantity, data.item_total, data.total);
-                
-                // If quantity is 0, remove the item
+                // Если количество 0, удаляем товар из DOM
                 if (newQuantity === 0) {
                     itemElement.remove();
-                    // If no items left, reload to show empty cart
+                    // Если корзина пуста, показываем блок "корзина пуста"
                     if (document.querySelectorAll('.cart-item').length === 0) {
-                        location.reload();
+                        const cartItemsBlock = document.querySelector('.cart-items');
+                        if (cartItemsBlock) cartItemsBlock.remove();
+                        const cartSummaryBlock = document.querySelector('.cart-summary');
+                        if (cartSummaryBlock) cartSummaryBlock.remove();
+                        document.querySelector('.cart-container').innerHTML += `
+                            <div class="empty-cart">
+                                <h2>Ваша корзина пуста</h2>
+                                <p>Похоже, вы еще не добавили растения в корзину.</p>
+                                <a href=\"{% url 'catalog' %}\" class=\"continue-shopping\">Продолжить покупки</a>
+                            </div>
+                        `;
+                        // Обновить счетчик в шапке
+                        const cartCount = document.querySelector('.cart-count');
+                        if (cartCount) cartCount.textContent = '0';
                     }
+                } else {
+                    // Обновляем отображение только если товар не удален
+                    updateCartDisplay(itemElement, newQuantity, itemTotal);
+                }
+                
+                // Обновляем счетчик товаров в шапке
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_count;
                 }
             } else {
-                // Revert to initial quantity if there's an error
+                // В случае ошибки возвращаем предыдущее значение
                 const initialQuantity = parseInt(itemElement.dataset.initialQuantity);
                 updateCartDisplay(itemElement, initialQuantity, price * initialQuantity);
-                alert(data.message || 'Error updating cart');
+                alert(data.message || 'Ошибка обновления корзины');
             }
         } catch (error) {
-            // Revert to initial quantity on error
+            // В случае ошибки возвращаем предыдущее значение
             const initialQuantity = parseInt(itemElement.dataset.initialQuantity);
             updateCartDisplay(itemElement, initialQuantity, price * initialQuantity);
-            console.error('Error updating cart:', error);
-            alert('Error updating cart');
+            console.error('Ошибка обновления корзины:', error);
+            alert('Ошибка обновления корзины');
         }
     };
 

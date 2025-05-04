@@ -14,6 +14,8 @@ import requests
 from django.conf import settings
 import logging
 
+# ghjd
+
 logger = logging.getLogger(__name__)
 
 class CartView(TemplateView):
@@ -24,35 +26,51 @@ class CartView(TemplateView):
 
         # Получаем корзину из сессии
         cart = self.request.session.get('cart', {})
+        logger.debug(f"Current cart session: {cart}")
 
         # Получаем продукты
         products = Product.objects.filter(id__in=cart.keys())
+        logger.debug(f"Found products: {products}")
 
         # Формируем список товаров с количеством и общей ценой
         cart_items = []
+        total_price = 0
         total_items = 0
+        
         for product in products:
             quantity = cart.get(str(product.id), 0)
-            total_price = product.price * quantity
-            total_items += quantity
-            cart_items.append({
-                'product': product,
-                'quantity': quantity,
-                'total_price': total_price,
-            })
+            logger.debug(f"Product {product.id}: quantity = {quantity}")
+            if quantity > 0:  # Добавляем только товары с положительным количеством
+                total_price += product.price * quantity
+                total_items += quantity
+                cart_items.append({
+                    'product': product,
+                    'quantity': quantity,
+                    'total_price': product.price * quantity,
+                })
 
-        context['cart_items'] = cart_items
-        context['total_price'] = sum(item['total_price'] for item in cart_items)
-        context['total_items'] = total_items
+        # Если корзина пуста, явно обнуляем значения
+        if not cart_items:
+            context['cart_items'] = []
+            context['total_price'] = 0
+            context['total_items'] = 0
+        else:
+            context['cart_items'] = cart_items
+            context['total_price'] = total_price
+            context['total_items'] = total_items
+
+        logger.debug(f"Final cart items: {cart_items}")
+        logger.debug(f"Total price: {total_price}")
+        logger.debug(f"Total items: {total_items}")
 
         return context
 
 def get_cart_data(request):
     cart = request.session.get('cart', {})
-    total_items = sum(int(quantity) for quantity in cart.values())
+    total_items = sum(int(quantity) for quantity in cart.values() if int(quantity) > 0)
     return total_items
 
-def cart_view(request):
+def cart_page(request):
     cart = request.session.get('cart', {})
     products = Product.objects.filter(id__in=cart.keys())
     cart_items = []
@@ -66,7 +84,6 @@ def cart_view(request):
             'quantity': quantity,
             'total_price': total_price,
         })
-    
     return render(request, 'cart/cart.html', {
         'cart_items': cart_items,
         'total': total
@@ -75,69 +92,40 @@ def cart_view(request):
 @require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    
-    # Получаем корзину из сессии
     cart = request.session.get('cart', {})
-    
-    # Увеличиваем количество товара в корзине
     cart[str(product.id)] = cart.get(str(product.id), 0) + 1
-    
-    # Сохраняем корзину в сессии
     request.session['cart'] = cart
     request.session.modified = True
-    
-    # Подсчитываем общее количество товаров
-    total_items = sum(int(quantity) for quantity in cart.values())
-    
-    return JsonResponse({
-        'status': 'success',
-        'message': f'"{product.name}" добавлен в корзину',
-        'cart_count': total_items
-    })
+    return JsonResponse({'status': 'success', 'cart_count': sum(int(qty) for qty in cart.values() if int(qty) > 0)})
 
 @require_POST
 def update_cart(request):
-    try:
-        data = json.loads(request.body)
-        product_id = str(data.get('item_id'))
-        quantity = int(data.get('quantity'))
-        
-        # Get the cart from session
-        cart = request.session.get('cart', {})
-        
-        # Get the product
-        product = get_object_or_404(Product, id=product_id)
-        
-        if quantity > 0:
-            # Update quantity
-            cart[product_id] = quantity
-        else:
-            # Remove item if quantity is 0
-            if product_id in cart:
-                del cart[product_id]
-        
-        # Save cart back to session
-        request.session['cart'] = cart
-        request.session.modified = True
-        
-        # Calculate totals
-        item_total = product.price * quantity if quantity > 0 else 0
-        cart_total = sum(
-            get_object_or_404(Product, id=pid).price * qty 
-            for pid, qty in cart.items()
-        )
-        
-        return JsonResponse({
-            'status': 'success',
-            'item_total': item_total,
-            'total': cart_total,
-            'cart_count': sum(cart.values())
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
+    data = json.loads(request.body)
+    product_id = str(data.get('item_id'))
+    quantity = int(data.get('quantity'))
+    
+    # Получаем текущую корзину из сессии
+    cart = request.session.get('cart', {})
+    
+    # Обновляем количество товара
+    if quantity > 0:
+        cart[product_id] = quantity
+    else:
+        # Если количество 0, удаляем товар из корзины
+        if product_id in cart:
+            del cart[product_id]
+    
+    # Сохраняем обновленную корзину в сессии
+    request.session['cart'] = cart
+    request.session.modified = True
+    
+    # Пересчитываем общее количество товаров (только положительные значения)
+    total_items = sum(int(qty) for qty in cart.values() if int(qty) > 0)
+    
+    return JsonResponse({
+        'status': 'success',
+        'cart_count': total_items
+    })
 
 @csrf_exempt
 def telegram_webhook(request):
@@ -160,7 +148,7 @@ def telegram_webhook(request):
                             json={
                                 'chat_id': chat_id,
                                 'text': (
-                                    "👋 Добро пожаловать в бот уведомлений о заказах!\n\n"
+                                    "Добро пожаловать в бот уведомлений о заказах!\n\n"
                                     "Для регистрации в системе используйте команду /check\n"
                                     "После регистрации администратор проверит вашу заявку и активирует уведомления."
                                 ),

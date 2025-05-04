@@ -1,0 +1,11 @@
+[0;1;32m●[0m gunicorn.service - gunicorn daemon for plant_shop
+     Loaded: loaded (/etc/systemd/system/gunicorn.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Sat 2025-05-03 15:14:59 +0330; 6ms ago
+   Main PID: 379664 (gunicorn)
+      Tasks: 1 (limit: 1101)
+     Memory: 1.2M
+        CPU: 4ms
+     CGroup: /system.slice/gunicorn.service
+             └─379664 /var/www/florest/.venv/bin/python3 /var/www/florest/.venv/bin/gunicorn plant_shop.wsgi:application --bind 0.0.0.0:8000 --config /var/www/florest/gunicorn_config.py
+
+May 03 15:14:59 hiplet-29932 systemd[1]: Started gunicorn daemon for plant_shop.
