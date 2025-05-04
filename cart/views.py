@@ -97,7 +97,9 @@ def add_to_cart(request, product_id):
     request.session['cart'] = cart
     request.session.modified = True
     
-    #return JsonResponse({'status': 'success', 'cart_count': sum(int(qty) for qty in cart.values() if int(qty) > 0)})
+    # Подсчитываем общее количество товаров в корзине
+    total_items = sum(int(qty) for qty in cart.values() if int(qty) > 0)
+    
     return JsonResponse({
         'status': 'success',
         'message': f'Товар «{product.name}» добавлен в корзину',
